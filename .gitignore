@@ -1,0 +1,84 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Root .gitignore — applies to the entire monorepo
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── OS generated files ──────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE and editor configs ──────────────────────────────────────────────────
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ── Backend: Maven build output ─────────────────────────────────────────────
+backend/target/
+
+# Maven wrapper (optional — commit if you want zero-install local builds)
+# !backend/.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot dev tools restart trigger file
+backend/.restarttrigger
+
+# ── Frontend: Node / Vite build output ──────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Frontend: environment variable files with real secrets ──────────────────
+# .env.example     → committed (documents required vars, no secrets)
+# .env.production  → committed (placeholder only, overridden in Netlify dashboard)
+# .env.local       → NOT committed (real dev values, may contain secrets)
+# .env.*.local     → NOT committed
+frontend/.env.local
+frontend/.env.*.local
+frontend/.env.development.local
+frontend/.env.test.local
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+# Local Docker override files (port mapping tweaks etc.)
+docker-compose.override.yml
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Test coverage output ──────────────────────────────────────────────────────
+backend/target/site/
+frontend/coverage/
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.swp
+*.swo
+*~
+.cache/
+.parcel-cache/

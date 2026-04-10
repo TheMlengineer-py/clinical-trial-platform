@@ -1,0 +1,46 @@
+# ── Base configuration (all environments) ───────────────────────────────────
+# Secrets and environment-specific values are injected via environment
+# variables — never hardcoded here. Render sets them via the dashboard.
+
+spring:
+  datasource:
+    # H2 in-memory database — spins up with the app, zero external deps.
+    # DB_CLOSE_DELAY=-1 keeps the database alive for the full app lifetime.
+    url: jdbc:h2:mem:trialdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      # create-drop: schema is created on startup, dropped on shutdown.
+      # Appropriate for H2 in-memory since data doesn't persist anyway.
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  sql:
+    init:
+      # Always run data.sql on startup to seed demo studies and patients.
+      mode: always
+
+  h2:
+    console:
+      # Disabled by default — only enable for local debugging.
+      enabled: false
+
+server:
+  port: 8080
+  # Return structured error JSON instead of the default HTML error page.
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ── CORS ─────────────────────────────────────────────────────────────────────
+# FRONTEND_URL is set in the Render dashboard to your Netlify app URL.
+# Falls back to localhost:5173 for local development.
+app:
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
