@@ -24,7 +24,7 @@ describe("PatientForm", () => {
 
   it("shows validation error when name is empty", () => {
     render(<PatientForm onClose={vi.fn()} />, { wrapper });
-    fireEvent.click(screen.getByText("Add patient"));
+    fireEvent.click(screen.getByRole("button", { name: "Add patient" }));
     expect(screen.getByText("Name is required")).toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe("PatientForm", () => {
     fireEvent.change(screen.getByPlaceholderText("e.g. NSCLC"), {
       target: { value: "NSCLC" },
     });
-    fireEvent.click(screen.getByText("Add patient"));
+    fireEvent.click(screen.getByRole("button", { name: "Add patient" }));
     expect(mockCreate).toHaveBeenCalledWith(
       { name: "Bob", age: 45, condition: "NSCLC" },
       expect.any(Object),

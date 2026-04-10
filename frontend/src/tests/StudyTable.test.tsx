@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import StudyTable from "../components/studies/StudyTable";
 
-// Mock the hook so we don't need a real API in tests
 vi.mock("../hooks/useStudies", () => ({
   useStudies: () => ({
     data: {
@@ -42,7 +41,8 @@ describe("StudyTable", () => {
 
   it("renders the OPEN status badge", () => {
     render(<StudyTable />, { wrapper });
-    expect(screen.getByText("OPEN")).toBeInTheDocument();
+    const badges = screen.getAllByText("OPEN");
+    expect(badges.some((el) => el.tagName === "SPAN")).toBe(true);
   });
 
   it("renders the New study button", () => {
