@@ -21,9 +21,9 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      - name: Run all tests
+      - name: Run tests and package
         working-directory: backend
-        run: mvn test -B
+        run: mvn package -B
 
       - name: Build Docker image (smoke check)
         working-directory: backend
