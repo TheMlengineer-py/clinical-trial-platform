@@ -1,0 +1,14 @@
+# Exclude compiled output — Docker should build from source, not local target/
+target/
+
+# Git history is not needed inside the container
+.git/
+.github/
+
+# Markdown files add no value to the runtime image
+*.md
+
+# Local IDE config files
+.idea/
+*.iml
+.vscode/

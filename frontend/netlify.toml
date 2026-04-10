@@ -1,0 +1,30 @@
+# ── Netlify build configuration ───────────────────────────────────────────────
+# Netlify reads this file automatically — no dashboard config needed for build settings.
+
+[build]
+  # Netlify runs the build from within the frontend/ subdirectory
+  base    = "frontend"
+  command = "npm run build"
+  # Vite outputs to dist/ by default
+  publish = "dist"
+
+# ── SPA routing fix ───────────────────────────────────────────────────────────
+# Without this redirect, refreshing any React Router path (e.g. /patients/3)
+# returns a 404 because Netlify looks for a real file at that path.
+# This rule catches all paths and serves index.html, letting React Router handle routing.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
+
+# ── Node version ─────────────────────────────────────────────────────────────
+[build.environment]
+  NODE_VERSION = "20"
+
+# ── Security headers (applied to all responses) ───────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options        = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy        = "strict-origin-when-cross-origin"

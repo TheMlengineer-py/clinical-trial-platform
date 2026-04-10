@@ -1,0 +1,18 @@
+# ── Production overrides (active when SPRING_PROFILES_ACTIVE=prod) ───────────
+# Render sets this env var automatically when you configure it in the dashboard.
+# These settings layer on top of application.yml — only overrides are needed here.
+
+spring:
+  h2:
+    console:
+      # Never expose the H2 console in production.
+      enabled: false
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    # Suppress noisy framework logs in production.
+    root: WARN
+    # Keep our own application logs visible for debugging.
+    com.bci.trial: INFO

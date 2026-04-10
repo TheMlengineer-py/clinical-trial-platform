@@ -1,0 +1,34 @@
+name: Backend CI
+
+on:
+  push:
+    paths: ["backend/**"]
+  pull_request:
+    paths: ["backend/**"]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Run all tests
+        working-directory: backend
+        run: mvn test -B
+
+      - name: Build Docker image (smoke check)
+        working-directory: backend
+        run: docker build -t clinical-trial-backend:ci .
+
+      - name: Verify JAR was produced
+        working-directory: backend
+        run: ls target/*.jar
