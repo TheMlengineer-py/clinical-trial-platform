@@ -67,7 +67,7 @@ export default function PatientTable() {
           </tr>
         </thead>
         <tbody>
-          {data?.content.map((patient) => (
+          {data?.content.map((patient: Patient) => (
             <tr key={patient.id} style={{ borderBottom: "1px solid #f0f0ec" }}>
               <td style={td}>
                 <div style={{ fontWeight: 500 }}>{patient.name}</div>
