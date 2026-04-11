@@ -112,7 +112,7 @@ class PatientServiceTest {
             PatientResponse result = patientService.create(req);
 
             assertThat(result.id()).isEqualTo(2L);
-            assertThat(result.enrolledStudyId()).isNull();   // no enrolment on creation
+            assertThat(result.enrolledStudyId()).isNull();
             verify(patientRepository).save(any(Patient.class));
         }
 
@@ -160,7 +160,7 @@ class PatientServiceTest {
         @Test
         @DisplayName("update() does not change enrolledStudyId")
         void update_doesNotClearEnrolment() {
-            savedPatient.setEnrolledStudyId(5L); // patient is enrolled
+            savedPatient.setEnrolledStudyId(5L);
             when(patientRepository.findById(1L)).thenReturn(Optional.of(savedPatient));
             when(patientRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -169,7 +169,6 @@ class PatientServiceTest {
 
             PatientResponse result = patientService.update(1L, req);
 
-            // Enrolment must be untouched — only RecruitmentService manages this
             assertThat(result.enrolledStudyId()).isEqualTo(5L);
         }
 
@@ -195,12 +194,16 @@ class PatientServiceTest {
     class Delete {
 
         @Test
-        @DisplayName("deletes a patient that exists")
+        @DisplayName("soft-deletes a patient by stamping deletedAt")
         void delete_existingPatient_succeeds() {
             when(patientRepository.findById(1L)).thenReturn(Optional.of(savedPatient));
+            when(patientRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             assertThatCode(() -> patientService.delete(1L)).doesNotThrowAnyException();
-            verify(patientRepository).delete(savedPatient);
+
+            // Verify soft delete — save() called with deletedAt stamped
+            verify(patientRepository).save(savedPatient);
+            assertThat(savedPatient.getDeletedAt()).isNotNull();
         }
 
         @Test
@@ -257,7 +260,6 @@ class PatientServiceTest {
     @DisplayName("meetsEligibility()")
     class MeetsEligibility {
 
-        /** Patient aged 42 with Breast cancer — used across eligibility tests. */
         private final Patient p = Patient.builder()
             .age(42).condition("Breast cancer").build();
 
@@ -306,7 +308,6 @@ class PatientServiceTest {
         @Test
         @DisplayName("fails combined criteria when one rule fails")
         void combined_oneRuleFails_fails() {
-            // Age passes (42 > 18) but condition fails
             assertThat(patientService.meetsEligibility(p, "age>18,condition=NSCLC")).isFalse();
         }
     }

@@ -8,19 +8,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
 
 /**
  * Service layer for study management.
  *
- * <p>Responsibilities:
- * <ul>
- *   <li>Enforce the DRAFT → OPEN → CLOSED → ARCHIVED lifecycle chain</li>
- *   <li>Block deletion of studies in OPEN status</li>
- *   <li>Map between {@link Study} entities and {@link StudyResponse} DTOs</li>
- * </ul>
- *
- * <p>All public methods are {@code @Transactional} — reads use
- * {@code readOnly=true} for performance (Hibernate skips dirty-checking).
+ * <p>Delete operations are soft — {@code deletedAt} is stamped rather than
+ * issuing a SQL DELETE, preserving audit history and allowing recovery.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,41 +22,19 @@ public class StudyService {
 
     private final StudyRepository studyRepository;
 
-    // ── Query methods ─────────────────────────────────────────────────────────
-
-    /**
-     * Returns a paginated list of studies, optionally filtered by status.
-     *
-     * @param status   filter by this status; pass {@code null} to return all
-     * @param pageable pagination and sort parameters from the controller
-     */
     @Transactional(readOnly = true)
     public Page<StudyResponse> findAll(StudyStatus status, Pageable pageable) {
         Page<Study> page = (status != null)
             ? studyRepository.findByStatus(status, pageable)
-            : studyRepository.findAll(pageable);
+            : studyRepository.findAllActive(pageable);
         return page.map(this::toResponse);
     }
 
-    /**
-     * Returns a single study by ID.
-     *
-     * @param id the study ID
-     * @throws StudyNotFoundException if no study exists with this ID
-     */
     @Transactional(readOnly = true)
     public StudyResponse findById(Long id) {
         return toResponse(getOrThrow(id));
     }
 
-    // ── Command methods ───────────────────────────────────────────────────────
-
-    /**
-     * Creates a new study in DRAFT status.
-     * Status is set by {@code Study}'s {@code @Builder.Default} — not by this method.
-     *
-     * @param req validated inbound payload
-     */
     @Transactional
     public StudyResponse create(StudyRequest req) {
         Study study = Study.builder()
@@ -73,14 +45,6 @@ public class StudyService {
         return toResponse(studyRepository.save(study));
     }
 
-    /**
-     * Updates mutable fields of an existing study.
-     * Status changes must go through {@link #transitionStatus} — not here.
-     *
-     * @param id  the study ID to update
-     * @param req validated inbound payload
-     * @throws StudyNotFoundException if no study exists with this ID
-     */
     @Transactional
     public StudyResponse update(Long id, StudyRequest req) {
         Study study = getOrThrow(id);
@@ -90,17 +54,6 @@ public class StudyService {
         return toResponse(studyRepository.save(study));
     }
 
-    /**
-     * Advances the study to the next lifecycle state.
-     *
-     * <p>Delegates the transition validity check to {@link StudyStatus#isValidTransition},
-     * which is the single source of truth for allowed moves.
-     *
-     * @param id        the study ID
-     * @param newStatus the requested target state
-     * @throws StudyNotFoundException           if no study exists with this ID
-     * @throws InvalidStateTransitionException  if the transition is not legal
-     */
     @Transactional
     public StudyResponse transitionStatus(Long id, StudyStatus newStatus) {
         Study study = getOrThrow(id);
@@ -116,14 +69,12 @@ public class StudyService {
     }
 
     /**
-     * Deletes a study.
-     *
-     * <p>OPEN studies cannot be deleted because they have enrolled patients.
-     * They must be CLOSED first via {@link #transitionStatus}.
+     * Soft-deletes a study by stamping {@code deletedAt}.
+     * OPEN studies cannot be deleted — they must be CLOSED first.
      *
      * @param id the study ID
-     * @throws StudyNotFoundException              if no study exists with this ID
-     * @throws StudyDeletionNotAllowedException    if the study is currently OPEN
+     * @throws StudyNotFoundException           if no active study exists with this ID
+     * @throws StudyDeletionNotAllowedException if the study is currently OPEN
      */
     @Transactional
     public void delete(Long id) {
@@ -133,29 +84,15 @@ public class StudyService {
             throw new StudyDeletionNotAllowedException(id);
         }
 
-        studyRepository.delete(study);
+        study.setDeletedAt(Instant.now());
+        studyRepository.save(study);
     }
 
-    // ── Package-private helpers (used by RecruitmentService) ─────────────────
-
-    /**
-     * Fetches a study by ID or throws a typed 404.
-     * Package-private so {@code RecruitmentService} can reuse it.
-     *
-     * @param id the study ID
-     * @throws StudyNotFoundException if not found
-     */
     public Study getOrThrow(Long id) {
-        return studyRepository.findById(id)
+        return studyRepository.findActiveById(id)
             .orElseThrow(() -> new StudyNotFoundException(id));
     }
 
-    /**
-     * Maps a {@link Study} entity to its outbound {@link StudyResponse} DTO.
-     *
-     * @param s the Study entity
-     * @return the corresponding DTO
-     */
     public StudyResponse toResponse(Study s) {
         return new StudyResponse(
             s.getId(),

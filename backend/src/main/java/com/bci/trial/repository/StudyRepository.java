@@ -10,35 +10,35 @@ import java.util.Optional;
 /**
  * JPA repository for {@link Study} entities.
  *
- * <p>Spring Data generates all implementations at runtime.
- * The pessimistic-lock query ({@link #findByIdForUpdate}) is used exclusively
- * by {@code RecruitmentService} to prevent the last-slot race condition —
- * it must only be called inside an active {@code @Transactional} method.
+ * <p>All queries filter on {@code deletedAt IS NULL} to honour soft deletes.
+ * The pessimistic-lock query must only be called inside an active
+ * {@code @Transactional} method.
  */
 public interface StudyRepository extends JpaRepository<Study, Long> {
 
     /**
-     * Returns a page of studies filtered by lifecycle status.
-     * Drives the status dropdown on the study table.
-     *
-     * @param status   the target status to filter by
-     * @param pageable pagination and sort parameters
+     * Returns all active (non-deleted) studies as a page.
      */
-    Page<Study> findByStatus(StudyStatus status, Pageable pageable);
+    @Query("SELECT s FROM Study s WHERE s.deletedAt IS NULL")
+    Page<Study> findAllActive(Pageable pageable);
 
     /**
-     * Acquires a pessimistic write lock on the study row for the duration
-     * of the calling transaction.
-     *
-     * <p>Without this lock, two concurrent recruitment requests could both
-     * pass the capacity check and increment {@code currentEnrollment} beyond
-     * {@code maxEnrollment} (classic check-then-act race condition).
-     *
-     * <p><strong>Must only be called within a {@code @Transactional} context.</strong>
-     *
-     * @param id the study ID to lock and retrieve
+     * Returns active studies filtered by lifecycle status.
+     */
+    @Query("SELECT s FROM Study s WHERE s.status = :status AND s.deletedAt IS NULL")
+    Page<Study> findByStatus(@Param("status") StudyStatus status, Pageable pageable);
+
+    /**
+     * Finds an active study by ID.
+     */
+    @Query("SELECT s FROM Study s WHERE s.id = :id AND s.deletedAt IS NULL")
+    Optional<Study> findActiveById(@Param("id") Long id);
+
+    /**
+     * Acquires a pessimistic write lock on an active study row.
+     * Must only be called within a {@code @Transactional} context.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT s FROM Study s WHERE s.id = :id")
+    @Query("SELECT s FROM Study s WHERE s.id = :id AND s.deletedAt IS NULL")
     Optional<Study> findByIdForUpdate(@Param("id") Long id);
 }
