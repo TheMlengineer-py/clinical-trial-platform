@@ -15,6 +15,9 @@ import java.time.Instant;
  *
  * <p>Delete operations are soft — {@code deletedAt} is stamped rather than
  * issuing a SQL DELETE, preserving recruitment history and audit trail.
+ *
+ * <p>Eligibility evaluation has been extracted to {@link EligibilityEngine}
+ * for testability and to support advanced rule combinations.
  */
 @Service
 @RequiredArgsConstructor
@@ -57,42 +60,12 @@ public class PatientService {
     /**
      * Soft-deletes a patient by stamping {@code deletedAt}.
      * Recruitment history is preserved in the database.
-     *
-     * @param id the patient ID
-     * @throws PatientNotFoundException if no active patient exists with this ID
      */
     @Transactional
     public void delete(Long id) {
         Patient patient = getOrThrow(id);
         patient.setDeletedAt(Instant.now());
         patientRepository.save(patient);
-    }
-
-    public boolean meetsEligibility(Patient patient, String criteria) {
-        if (criteria == null || criteria.isBlank()) return true;
-
-        for (String rule : criteria.split(",")) {
-            rule = rule.trim();
-
-            if (rule.startsWith("age")) {
-                char op = rule.charAt(3);
-                int threshold = Integer.parseInt(rule.substring(4).trim());
-                boolean passes = switch (op) {
-                    case '>' -> patient.getAge() > threshold;
-                    case '<' -> patient.getAge() < threshold;
-                    case '=' -> patient.getAge() == threshold;
-                    default  -> true;
-                };
-                if (!passes) return false;
-            }
-
-            else if (rule.startsWith("condition=")) {
-                String required = rule.substring("condition=".length()).trim();
-                if (!patient.getCondition().equalsIgnoreCase(required)) return false;
-            }
-        }
-
-        return true;
     }
 
     public Patient getOrThrow(Long id) {

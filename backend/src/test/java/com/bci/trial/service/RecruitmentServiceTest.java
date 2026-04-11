@@ -6,6 +6,7 @@ import com.bci.trial.event.*;
 import com.bci.trial.exception.*;
 import com.bci.trial.repository.PatientRepository;
 import com.bci.trial.repository.StudyRepository;
+import com.bci.trial.service.EligibilityEngine.EligibilityResult;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -18,8 +19,9 @@ import static org.mockito.Mockito.*;
 class RecruitmentServiceTest {
 
     @Mock StudyRepository      studyRepository;
-    @Mock PatientRepository    patientRepository;   // ← was missing
+    @Mock PatientRepository    patientRepository;
     @Mock PatientService       patientService;
+    @Mock EligibilityEngine    eligibilityEngine;
     @Mock DomainEventPublisher eventPublisher;
     @InjectMocks RecruitmentService recruitmentService;
 
@@ -42,16 +44,19 @@ class RecruitmentServiceTest {
         req.setPatientId(1L);
         req.setStudyId(2L);
 
-        // Only stub what every test needs
         lenient().when(patientService.getOrThrow(1L)).thenReturn(patient);
-        lenient().when(studyRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(study));
+        lenient().when(studyRepository.findByIdForUpdate(2L))
+            .thenReturn(Optional.of(study));
     }
 
     @Test
     @DisplayName("recruit() enrolls patient and increments study count")
     void recruit_success() {
-        PatientResponse mockResponse = new PatientResponse(1L, "Alice", 30, "NSCLC", 2L, null);
-        when(patientService.meetsEligibility(patient, study.getEligibilityCriteria())).thenReturn(true);
+        PatientResponse mockResponse = new PatientResponse(
+            1L, "Alice", 30, "NSCLC", 2L, null
+        );
+        when(eligibilityEngine.evaluate(patient, study.getEligibilityCriteria()))
+            .thenReturn(EligibilityResult.pass());
         when(patientService.toResponse(any())).thenReturn(mockResponse);
 
         PatientResponse result = recruitmentService.recruit(req);
@@ -93,10 +98,13 @@ class RecruitmentServiceTest {
     @Test
     @DisplayName("recruit() throws EligibilityException when patient is ineligible")
     void recruit_ineligiblePatient_throws() {
-        when(patientService.meetsEligibility(patient, study.getEligibilityCriteria()))
-            .thenReturn(false);
+        when(eligibilityEngine.evaluate(patient, study.getEligibilityCriteria()))
+            .thenReturn(EligibilityResult.fail(
+                "Patient age 30 does not satisfy age>50"
+            ));
 
         assertThatThrownBy(() -> recruitmentService.recruit(req))
-            .isInstanceOf(EligibilityException.class);
+            .isInstanceOf(EligibilityException.class)
+            .hasMessageContaining("does not meet eligibility");
     }
 }
