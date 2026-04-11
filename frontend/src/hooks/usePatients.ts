@@ -2,16 +2,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as patientsApi from "../api/patients";
 import type { PatientRequest, RecruitmentRequest } from "../types/patient";
 
+/**
+ * React Query hooks for patient data.
+ *
+ * Polling: refetchInterval keeps patient enrollment status
+ * up to date for all users without requiring a manual page refresh.
+ */
+
 export const patientKeys = {
   all: (condition?: string) => ["patients", { condition }] as const,
   detail: (id: number) => ["patients", id] as const,
 };
 
-/** Paginated patients list with optional condition filter. */
+/** Paginated patients list with optional condition filter.
+ *  Polls every 30 seconds so recruitment status stays current. */
 export const usePatients = (condition?: string, page = 0) =>
   useQuery({
     queryKey: patientKeys.all(condition),
     queryFn: () => patientsApi.getPatients(condition, page),
+    refetchInterval: 30_000,
   });
 
 /** Single patient detail. */
@@ -20,6 +29,7 @@ export const usePatient = (id: number) =>
     queryKey: patientKeys.detail(id),
     queryFn: () => patientsApi.getPatientById(id),
     enabled: !!id,
+    refetchInterval: 30_000,
   });
 
 /** Create patient. */
