@@ -10,6 +10,9 @@ import type { StudyStatus, StudyRequest } from "../types/study";
  * React Query handles caching, background refetching, loading/error states,
  * and cache invalidation automatically. Redux would require significant
  * boilerplate for the same behaviour with no real benefit here.
+ *
+ * Polling: refetchInterval keeps enrollment counts and study statuses
+ * up to date for all users without requiring a manual page refresh.
  */
 
 /** Query key factory — consistent keys prevent stale cache issues. */
@@ -18,11 +21,13 @@ export const studyKeys = {
   detail: (id: number) => ["studies", id] as const,
 };
 
-/** Paginated studies list with optional status filter. */
+/** Paginated studies list with optional status filter.
+ *  Polls every 30 seconds so enrollment counts stay current. */
 export const useStudies = (status?: StudyStatus, page = 0) =>
   useQuery({
     queryKey: studyKeys.all(status),
     queryFn: () => studiesApi.getStudies(status, page),
+    refetchInterval: 30_000,
   });
 
 /** Single study by ID. */
@@ -31,6 +36,7 @@ export const useStudy = (id: number) =>
     queryKey: studyKeys.detail(id),
     queryFn: () => studiesApi.getStudyById(id),
     enabled: !!id,
+    refetchInterval: 30_000,
   });
 
 /** Create study — invalidates the studies list on success. */
