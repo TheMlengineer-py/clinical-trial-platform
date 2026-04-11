@@ -17,6 +17,9 @@ import static org.mockito.Mockito.*;
  *
  * <p>Uses Mockito to isolate the service from the real database.
  * No Spring context is loaded — tests run fast and independently.
+ *
+ * <p>All repository lookups use {@code findActiveById()} to honour
+ * soft deletes — hard-deleted records are invisible to the service.
  */
 @ExtendWith(MockitoExtension.class)
 class StudyServiceTest {
@@ -50,7 +53,7 @@ class StudyServiceTest {
     void transition_draftToOpen_succeeds() {
         Study study = Study.builder().id(1L).status(StudyStatus.DRAFT)
             .title("S").maxEnrollment(5).build();
-        when(studyRepository.findById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.findActiveById(1L)).thenReturn(Optional.of(study));
         when(studyRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         StudyResponse result = studyService.transitionStatus(1L, StudyStatus.OPEN);
@@ -63,7 +66,7 @@ class StudyServiceTest {
     void transition_illegalJump_throws() {
         Study study = Study.builder().id(1L).status(StudyStatus.DRAFT)
             .title("S").maxEnrollment(5).build();
-        when(studyRepository.findById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.findActiveById(1L)).thenReturn(Optional.of(study));
 
         assertThatThrownBy(() -> studyService.transitionStatus(1L, StudyStatus.CLOSED))
             .isInstanceOf(InvalidStateTransitionException.class)
@@ -76,7 +79,7 @@ class StudyServiceTest {
     void transition_reversal_throws() {
         Study study = Study.builder().id(1L).status(StudyStatus.OPEN)
             .title("S").maxEnrollment(5).build();
-        when(studyRepository.findById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.findActiveById(1L)).thenReturn(Optional.of(study));
 
         assertThatThrownBy(() -> studyService.transitionStatus(1L, StudyStatus.DRAFT))
             .isInstanceOf(InvalidStateTransitionException.class);
@@ -89,21 +92,25 @@ class StudyServiceTest {
     void delete_openStudy_throws() {
         Study study = Study.builder().id(1L).status(StudyStatus.OPEN)
             .title("S").maxEnrollment(5).build();
-        when(studyRepository.findById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.findActiveById(1L)).thenReturn(Optional.of(study));
 
         assertThatThrownBy(() -> studyService.delete(1L))
             .isInstanceOf(StudyDeletionNotAllowedException.class);
     }
 
     @Test
-    @DisplayName("delete() succeeds for a DRAFT study")
+    @DisplayName("delete() soft-deletes a DRAFT study by stamping deletedAt")
     void delete_draftStudy_succeeds() {
         Study study = Study.builder().id(1L).status(StudyStatus.DRAFT)
             .title("S").maxEnrollment(5).build();
-        when(studyRepository.findById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.findActiveById(1L)).thenReturn(Optional.of(study));
+        when(studyRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         assertThatCode(() -> studyService.delete(1L)).doesNotThrowAnyException();
-        verify(studyRepository).delete(study);
+
+        // Verify soft delete — save() called with deletedAt stamped
+        verify(studyRepository).save(study);
+        assertThat(study.getDeletedAt()).isNotNull();
     }
 
     // ── findById() ───────────────────────────────────────────────────────────
@@ -111,7 +118,7 @@ class StudyServiceTest {
     @Test
     @DisplayName("findById() throws StudyNotFoundException for unknown ID")
     void findById_unknownId_throws() {
-        when(studyRepository.findById(99L)).thenReturn(Optional.empty());
+        when(studyRepository.findActiveById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> studyService.findById(99L))
             .isInstanceOf(StudyNotFoundException.class);
