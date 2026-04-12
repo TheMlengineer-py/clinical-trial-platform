@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePatients, useDeletePatient } from "../../hooks/usePatients";
+import { useAuth } from "../../context/AuthContext";
 import type { Patient } from "../../types/patient";
 import PatientForm from "./PatientForm";
 import RecruitModal from "./RecruitModal";
@@ -7,12 +8,9 @@ import LoadingSpinner from "../shared/LoadingSpinner";
 import ErrorBanner from "../shared/ErrorBanner";
 import Pagination from "../shared/Pagination";
 
-/**
- * Main patient management table.
- * Sorted by most recently recruited (handled by the backend).
- * Features: condition filter, add/edit/delete, recruit modal.
- */
 export default function PatientTable() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [condition, setCond] = useState("");
   const [page, setPage] = useState(0);
   const [showForm, setForm] = useState(false);
@@ -42,9 +40,11 @@ export default function PatientTable() {
             }}
             style={searchInput}
           />
-          <button onClick={() => setForm(true)} style={primaryBtn}>
-            + Add patient
-          </button>
+          {isAdmin && (
+            <button onClick={() => setForm(true)} style={primaryBtn}>
+              + Add patient
+            </button>
+          )}
         </div>
       </div>
 
@@ -100,18 +100,25 @@ export default function PatientTable() {
                       Recruit
                     </button>
                   )}
-                  <button onClick={() => setEditing(patient)} style={actionBtn}>
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Delete ${patient.name}?`))
-                        deletePatient.mutate(patient.id);
-                    }}
-                    style={{ ...actionBtn, color: "#A32D2D" }}
-                  >
-                    Delete
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setEditing(patient)}
+                      style={actionBtn}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete ${patient.name}?`))
+                          deletePatient.mutate(patient.id);
+                      }}
+                      style={{ ...actionBtn, color: "#A32D2D" }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
