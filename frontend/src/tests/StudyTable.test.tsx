@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import StudyTable from "../components/studies/StudyTable";
+import * as AuthContext from "../context/AuthContext";
 
 vi.mock("../hooks/useStudies", () => ({
   useStudies: () => ({
@@ -27,26 +28,73 @@ vi.mock("../hooks/useStudies", () => ({
   useTransitionStudy: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+vi.mock("../context/AuthContext", async () => {
+  const actual = await vi.importActual<typeof AuthContext>(
+    "../context/AuthContext",
+  );
+  return { ...actual, useAuth: vi.fn() };
+});
+
+const mockUseAuth = AuthContext.useAuth as ReturnType<typeof vi.fn>;
+
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={new QueryClient()}>
     <MemoryRouter>{children}</MemoryRouter>
   </QueryClientProvider>
 );
 
-describe("StudyTable", () => {
-  it("renders study title in the table", () => {
+describe("StudyTable — admin view", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      user: { username: "admin", role: "ADMIN" },
+      isLoading: false,
+    });
+  });
+
+  it("renders study title", () => {
     render(<StudyTable />, { wrapper });
     expect(screen.getByText("BRCA Trial")).toBeInTheDocument();
   });
 
-  it("renders the OPEN status badge", () => {
+  it("renders OPEN status badge", () => {
     render(<StudyTable />, { wrapper });
-    const badges = screen.getAllByText("OPEN");
-    expect(badges.some((el) => el.tagName === "SPAN")).toBe(true);
+    expect(
+      screen.getAllByText("OPEN").some((el) => el.tagName === "SPAN"),
+    ).toBe(true);
   });
 
-  it("renders the New study button", () => {
+  it("renders New study button for admin", () => {
     render(<StudyTable />, { wrapper });
     expect(screen.getByText("+ New study")).toBeInTheDocument();
+  });
+
+  it("renders Edit and Delete buttons for admin", () => {
+    render(<StudyTable />, { wrapper });
+    expect(screen.getByText("Edit")).toBeInTheDocument();
+    expect(screen.getByText("Delete")).toBeInTheDocument();
+  });
+});
+
+describe("StudyTable — researcher view", () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      user: { username: "researcher", role: "RESEARCHER" },
+      isLoading: false,
+    });
+  });
+
+  it("does NOT render New study button", () => {
+    render(<StudyTable />, { wrapper });
+    expect(screen.queryByText("+ New study")).not.toBeInTheDocument();
+  });
+
+  it("does NOT render Edit button", () => {
+    render(<StudyTable />, { wrapper });
+    expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+  });
+
+  it("shows View only label", () => {
+    render(<StudyTable />, { wrapper });
+    expect(screen.getByText("View only")).toBeInTheDocument();
   });
 });

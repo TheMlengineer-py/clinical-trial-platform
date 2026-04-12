@@ -2,6 +2,7 @@ package com.bci.trial.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -77,6 +78,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // ── 403 Forbidden — Spring Security access denial ────────────────────────
+
+    /**
+     * Re-throws AccessDeniedException so Spring Security's
+     * ExceptionTranslationFilter can handle it and return a proper 403.
+     * Without this, the catch-all handler below would swallow it as a 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public void handleAccessDenied(AccessDeniedException ex) throws AccessDeniedException {
+        throw ex;
     }
 
     // ── 500 Internal Server Error — unexpected failures ───────────────────────

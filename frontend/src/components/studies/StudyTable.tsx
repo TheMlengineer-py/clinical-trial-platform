@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStudies, useDeleteStudy } from "../../hooks/useStudies";
-import type { StudyStatus } from "../../types/study";
+import { useAuth } from "../../context/AuthContext";
+import type { Study, StudyStatus } from "../../types/study";
 import StudyStatusBadge from "./StudyStatusBadge";
 import StudyLifecycleControls from "./StudyLifecycleControls";
 import StudyForm from "./StudyForm";
@@ -8,11 +9,9 @@ import LoadingSpinner from "../shared/LoadingSpinner";
 import ErrorBanner from "../shared/ErrorBanner";
 import Pagination from "../shared/Pagination";
 
-/**
- * Main study management table.
- * Features: status filter, add/edit/delete, lifecycle controls, pagination.
- */
 export default function StudyTable() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [status, setStatus] = useState<StudyStatus | undefined>();
   const [page, setPage] = useState(0);
   const [showForm, setForm] = useState(false);
@@ -26,7 +25,6 @@ export default function StudyTable() {
 
   return (
     <div style={panel}>
-      {/* Header row */}
       <div style={panelHeader}>
         <span style={{ fontWeight: 500, fontSize: 13 }}>Studies</span>
         <div style={{ display: "flex", gap: 8 }}>
@@ -46,13 +44,14 @@ export default function StudyTable() {
               ),
             )}
           </select>
-          <button onClick={() => setForm(true)} style={primaryBtn}>
-            + New study
-          </button>
+          {isAdmin && (
+            <button onClick={() => setForm(true)} style={primaryBtn}>
+              + New study
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Table */}
       <table
         style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}
       >
@@ -66,7 +65,7 @@ export default function StudyTable() {
           </tr>
         </thead>
         <tbody>
-          {data?.content.map((study) => (
+          {data?.content.map((study: Study) => (
             <tr key={study.id} style={{ borderBottom: "1px solid #f0f0ec" }}>
               <td style={td}>
                 <div style={{ fontWeight: 500 }}>{study.title}</div>
@@ -80,7 +79,6 @@ export default function StudyTable() {
                 <StudyStatusBadge status={study.status} />
               </td>
               <td style={td}>
-                {/* Progress bar */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div
                     style={{
@@ -108,22 +106,37 @@ export default function StudyTable() {
               </td>
               <td style={td}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  <StudyLifecycleControls study={study} />
-                  <button
-                    onClick={() => setEditing(study.id)}
-                    style={actionBtn}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Delete "${study.title}"?`))
-                        deleteStudy.mutate(study.id);
-                    }}
-                    style={{ ...actionBtn, color: "#A32D2D" }}
-                  >
-                    Delete
-                  </button>
+                  {isAdmin && <StudyLifecycleControls study={study} />}
+                  {isAdmin && (
+                    <button
+                      onClick={() => setEditing(study.id)}
+                      style={actionBtn}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete "${study.title}"?`))
+                          deleteStudy.mutate(study.id);
+                      }}
+                      style={{ ...actionBtn, color: "#A32D2D" }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  {!isAdmin && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#aaa",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      View only
+                    </span>
+                  )}
                 </div>
               </td>
             </tr>
@@ -137,7 +150,6 @@ export default function StudyTable() {
         onPageChange={setPage}
       />
 
-      {/* Create / Edit modal */}
       {showForm && <StudyForm onClose={() => setForm(false)} />}
       {editing && (
         <StudyForm
@@ -149,7 +161,6 @@ export default function StudyTable() {
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
 const panel: React.CSSProperties = {
   background: "#fff",
   border: "1px solid #e5e5e0",

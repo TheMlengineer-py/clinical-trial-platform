@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import PatientForm from "../components/patients/PatientForm";
 
 const mockCreate = vi.fn();
+
 vi.mock("../hooks/usePatients", () => ({
   useCreatePatient: () => ({ mutate: mockCreate, isPending: false }),
   useUpdatePatient: () => ({ mutate: vi.fn(), isPending: false }),
