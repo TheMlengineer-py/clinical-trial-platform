@@ -89,10 +89,4 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
   });
-
-  it("shows demo credential hints", () => {
-    renderLogin();
-    expect(screen.getByText(/admin \/ password/)).toBeInTheDocument();
-    expect(screen.getByText(/researcher \/ password/)).toBeInTheDocument();
-  });
 });
