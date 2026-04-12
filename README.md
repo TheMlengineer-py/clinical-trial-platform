@@ -172,6 +172,12 @@ Browsers block the `JSESSIONID` cookie unless it is explicitly set with `SameSit
 
 Firefox is more lenient and works correctly.
 
+
+## Initial load timeout
+The backend is hosted on Render's free tier which spins down after 15 minutes of inactivity.
+The first request after a long period of no activity may take 30-40 seconds to respond while the service wakes up. 
+If a timeout error appears, wait 30 seconds and refresh the page. This is a free tier hosting limitation, not a code bug.
+
 ### What I Would Improve With More Time
 
 Replace H2 with PostgreSQL on Render managed database
